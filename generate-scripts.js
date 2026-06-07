@@ -1,4 +1,57 @@
-#!/bin/bash
+const fs = require('fs');
+const { execSync } = require('child_process');
+
+const startSh = `#!/bin/bash
+set -e
+
+echo "======================================"
+echo "社区托育补助发放系统 - 启动脚本"
+echo "======================================"
+
+if [ ! -d "backend/node_modules" ] || [ ! -d "frontend/node_modules" ]; then
+  echo "正在安装依赖..."
+  npm run install:all
+fi
+
+if [ ! -f "backend/data.db" ]; then
+  echo "正在初始化数据库和种子数据..."
+  npm run seed
+fi
+
+echo ""
+echo "启动后端服务 (端口 3001)..."
+cd backend
+node src/server.js &
+BACKEND_PID=$!
+
+cd ..
+
+echo "等待后端服务启动..."
+sleep 3
+
+echo ""
+echo "启动前端服务 (端口 5173)..."
+cd frontend
+npm run dev &
+FRONTEND_PID=$!
+
+cd ..
+
+echo ""
+echo "======================================"
+echo "系统已启动！"
+echo "前端地址: http://localhost:5173"
+echo "后端API:  http://localhost:3001/api"
+echo "======================================"
+echo ""
+echo "按 Ctrl+C 停止服务"
+
+trap "kill $BACKEND_PID $FRONTEND_PID 2>/dev/null; echo '服务已停止'" EXIT
+
+wait
+`;
+
+const verifySh = `#!/bin/bash
 set -e
 
 echo "======================================"
@@ -63,7 +116,9 @@ echo "======================================"
 
 CHILD_ID_CARD="110101202101019999"
 
-RESPONSE1=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/applications"   -H "Content-Type: application/json"   -d '{
+RESPONSE1=$(curl -s -w "\\n%{http_code}" -X POST "$API_BASE/applications" \
+  -H "Content-Type: application/json" \
+  -d '{
     "child_name": "测试儿童",
     "child_id_card": "'"$CHILD_ID_CARD"'",
     "child_birth_date": "2021-01-01",
@@ -93,7 +148,9 @@ echo "======================================"
 echo "测试2: 重复提交相同证件号（应该被拒绝）"
 echo "======================================"
 
-RESPONSE2=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/applications"   -H "Content-Type: application/json"   -d '{
+RESPONSE2=$(curl -s -w "\\n%{http_code}" -X POST "$API_BASE/applications" \
+  -H "Content-Type: application/json" \
+  -d '{
     "child_name": "另一个儿童",
     "child_id_card": "'"$CHILD_ID_CARD"'",
     "child_birth_date": "2021-02-02",
@@ -127,7 +184,7 @@ echo "======================================"
 echo "测试3: 验证数据库中只有一条记录"
 echo "======================================"
 
-COUNT=$(curl -s "$API_BASE/applications" | grep -o "$CHILD_ID_CARD" | wc -l | tr -d " ")
+COUNT=$(curl -s "$API_BASE/applications" | grep -o "$CHILD_ID_CARD" | wc -l)
 
 echo "数据库中证件号 $CHILD_ID_CARD 出现次数: $COUNT"
 
@@ -143,7 +200,9 @@ echo "======================================"
 echo "测试4: 合同月份未覆盖申请月份（应该被拒绝）"
 echo "======================================"
 
-RESPONSE3=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/applications"   -H "Content-Type: application/json"   -d '{
+RESPONSE3=$(curl -s -w "\\n%{http_code}" -X POST "$API_BASE/applications" \
+  -H "Content-Type: application/json" \
+  -d '{
     "child_name": "合同测试",
     "child_id_card": "110101202101018888",
     "child_birth_date": "2021-01-01",
@@ -185,3 +244,16 @@ echo ""
 echo "前端页面验证说明："
 echo "  启动服务后访问 http://localhost:5173"
 echo "  在家长申报页面，输入已存在的证件号提交，页面会弹出错误提示"
+`;
+
+fs.writeFileSync('/Users/mingyuan/workspace/sihuo/wangxtw3/829/start.sh', startSh);
+console.log('Created: start.sh');
+
+fs.writeFileSync('/Users/mingyuan/workspace/sihuo/wangxtw3/829/verify.sh', verifySh);
+console.log('Created: verify.sh');
+
+execSync('chmod +x /Users/mingyuan/workspace/sihuo/wangxtw3/829/start.sh');
+execSync('chmod +x /Users/mingyuan/workspace/sihuo/wangxtw3/829/verify.sh');
+console.log('Scripts made executable');
+
+console.log('\n所有脚本创建完成！');

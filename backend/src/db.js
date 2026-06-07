@@ -1,13 +1,16 @@
-const Database = require('better-sqlite3');
+const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const { promisify } = require('util');
 
 const dbPath = path.join(__dirname, '../data.db');
-const db = new Database(dbPath);
+const db = new sqlite3.Database(dbPath);
 
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
+db.run = promisify(db.run.bind(db));
+db.get = promisify(db.get.bind(db));
+db.all = promisify(db.all.bind(db));
+db.exec = promisify(db.exec.bind(db));
 
-function initDB() {
+async function initDB() {
   db.exec(`
     CREATE TABLE IF NOT EXISTS applications (
       id TEXT PRIMARY KEY,
