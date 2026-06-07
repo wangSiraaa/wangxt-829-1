@@ -11,7 +11,7 @@ db.all = promisify(db.all.bind(db));
 db.exec = promisify(db.exec.bind(db));
 
 async function initDB() {
-  db.exec(`
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS applications (
       id TEXT PRIMARY KEY,
       child_name TEXT NOT NULL,
@@ -26,8 +26,34 @@ async function initDB() {
       status TEXT NOT NULL DEFAULT 'PENDING_REVIEW',
       community_opinion TEXT,
       street_opinion TEXT,
+      has_supplement INTEGER NOT NULL DEFAULT 0,
+      supplement_verified INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS supplementary_materials (
+      id TEXT PRIMARY KEY,
+      application_id TEXT NOT NULL,
+      material_type TEXT NOT NULL,
+      description TEXT NOT NULL,
+      file_url TEXT,
+      status TEXT NOT NULL DEFAULT 'PENDING_REVIEW',
+      reviewer_opinion TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (application_id) REFERENCES applications(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS status_logs (
+      id TEXT PRIMARY KEY,
+      application_id TEXT NOT NULL,
+      old_status TEXT,
+      new_status TEXT NOT NULL,
+      operator TEXT NOT NULL,
+      remark TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (application_id) REFERENCES applications(id)
     );
 
     CREATE TABLE IF NOT EXISTS payment_batches (
@@ -53,6 +79,8 @@ async function initDB() {
 
 const STATUS = {
   PENDING_REVIEW: 'PENDING_REVIEW',
+  PENDING_SUPPLEMENT: 'PENDING_SUPPLEMENT',
+  SUPPLEMENT_SUBMITTED: 'SUPPLEMENT_SUBMITTED',
   COMMUNITY_APPROVED: 'COMMUNITY_APPROVED',
   COMMUNITY_REJECTED: 'COMMUNITY_REJECTED',
   STREET_APPROVED: 'STREET_APPROVED',
@@ -63,6 +91,8 @@ const STATUS = {
 
 const STATUS_LABELS = {
   PENDING_REVIEW: '待社区初审',
+  PENDING_SUPPLEMENT: '待补充材料',
+  SUPPLEMENT_SUBMITTED: '已提交补充材料',
   COMMUNITY_APPROVED: '社区审核通过',
   COMMUNITY_REJECTED: '社区审核拒绝',
   STREET_APPROVED: '街道复核通过',
@@ -71,4 +101,47 @@ const STATUS_LABELS = {
   PAID: '已发放'
 };
 
-module.exports = { db, initDB, STATUS, STATUS_LABELS };
+const MATERIAL_TYPES = {
+  CONTRACT_MONTH: 'CONTRACT_MONTH',
+  CHILD_ID: 'CHILD_ID',
+  DAYCARE_VOUCHER: 'DAYCARE_VOUCHER'
+};
+
+const MATERIAL_TYPE_LABELS = {
+  CONTRACT_MONTH: '合同月份补充说明',
+  CHILD_ID: '幼儿证件补充说明',
+  DAYCARE_VOUCHER: '托育凭证补充说明'
+};
+
+const SUPPLEMENT_STATUS = {
+  PENDING_REVIEW: 'PENDING_REVIEW',
+  VERIFIED: 'VERIFIED',
+  REJECTED: 'REJECTED'
+};
+
+const SUPPLEMENT_STATUS_LABELS = {
+  PENDING_REVIEW: '待审核',
+  VERIFIED: '审核通过',
+  REJECTED: '审核拒绝'
+};
+
+async function logStatus(applicationId, oldStatus, newStatus, operator, remark) {
+  const { v4: uuidv4 } = require('uuid');
+  const id = uuidv4();
+  await db.run(
+    'INSERT INTO status_logs (id, application_id, old_status, new_status, operator, remark) VALUES (?, ?, ?, ?, ?, ?)',
+    id, applicationId, oldStatus, newStatus, operator, remark
+  );
+}
+
+module.exports = {
+  db,
+  initDB,
+  STATUS,
+  STATUS_LABELS,
+  MATERIAL_TYPES,
+  MATERIAL_TYPE_LABELS,
+  SUPPLEMENT_STATUS,
+  SUPPLEMENT_STATUS_LABELS,
+  logStatus
+};

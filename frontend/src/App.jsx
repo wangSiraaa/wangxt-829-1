@@ -5,12 +5,14 @@ import {
   FileAddOutlined,
   AuditOutlined,
   CheckCircleOutlined,
-  DollarOutlined
+  DollarOutlined,
+  FileTextOutlined
 } from '@ant-design/icons';
 import ApplyPage from './pages/ApplyPage';
 import CommunityReviewPage from './pages/CommunityReviewPage';
 import StreetReviewPage from './pages/StreetReviewPage';
 import PaymentPage from './pages/PaymentPage';
+import SupplementPage from './pages/SupplementPage';
 
 const { Header, Content, Sider } = Layout;
 
@@ -22,6 +24,11 @@ function App() {
       key: '/apply',
       icon: <FileAddOutlined />,
       label: <Link to="/apply">家长申报</Link>
+    },
+    {
+      key: '/supplement',
+      icon: <FileTextOutlined />,
+      label: <Link to="/supplement">补充材料</Link>
     },
     {
       key: '/community-review',
@@ -69,6 +76,7 @@ function App() {
             <Routes>
               <Route path="/" element={<ApplyPage />} />
               <Route path="/apply" element={<ApplyPage />} />
+              <Route path="/supplement" element={<SupplementPage />} />
               <Route path="/community-review" element={<CommunityReviewPage />} />
               <Route path="/street-review" element={<StreetReviewPage />} />
               <Route path="/payment" element={<PaymentPage />} />
